@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+*.sqlite3
+datasets/*.csv
+!datasets/sample_iot_traffic.csv
+!datasets/test_traffic.csv
+models/*.joblib
+reports/*.csv
+.pytest_cache/
+.env
+venv/
+env/

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Attack Threat Analysis{% endblock %}
+{% block page_title %}<i class="fas fa-crosshairs"></i> Cybersecurity Attack Analysis & Signatures{% endblock %}
+
+{% block content %}
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fas fa-chart-pie"></i> Specific Threat Distribution</h3>
+    </div>
+    <div style="position: relative; height: 300px;">
+      <canvas id="attackTypeChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fas fa-network-wired"></i> High-Level Attack Categories</h3>
+    </div>
+    <div style="position: relative; height: 300px;">
+      <canvas id="categoryChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Threat Matrix Overview -->
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-shield-virus"></i> IoT Attack Vector Taxonomy</h3>
+  </div>
+
+  <div class="stats-grid" style="margin-bottom: 0;">
+    <div style="background: var(--bg-secondary); padding: 1.25rem; border-radius: 8px;">
+      <h4 style="color: var(--accent-red); margin-bottom: 0.25rem;"><i class="fas fa-bomb"></i> Distributed Denial of Service (DDoS)</h4>
+      <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">SYN Flood, UDP Storm, ICMP Amplification. Overwhelms IoT device sockets.</p>
+      <span class="badge badge-high">High Impact</span>
+    </div>
+
+    <div style="background: var(--bg-secondary); padding: 1.25rem; border-radius: 8px;">
+      <h4 style="color: var(--accent-orange); margin-bottom: 0.25rem;"><i class="fas fa-spider"></i> Mirai Botnet Propagation</h4>
+      <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">GRE floods and automated vulnerability scanning recruiting compromised IoT sensors.</p>
+      <span class="badge badge-high">Severe</span>
+    </div>
+
+    <div style="background: var(--bg-secondary); padding: 1.25rem; border-radius: 8px;">
+      <h4 style="color: var(--accent-cyan); margin-bottom: 0.25rem;"><i class="fas fa-binoculars"></i> Reconnaissance</h4>
+      <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Port scanners, OS fingerprinting probes mapping open Telnet, SSH, and HTTP services.</p>
+      <span class="badge badge-low">Early Warning</span>
+    </div>
+
+    <div style="background: var(--bg-secondary); padding: 1.25rem; border-radius: 8px;">
+      <h4 style="color: var(--accent-purple); margin-bottom: 0.25rem;"><i class="fas fa-key"></i> Brute Force Attacks</h4>
+      <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Dictionary attacks attempting factory credential combinations on IoT gateways.</p>
+      <span class="badge badge-medium">Moderate</span>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const distData = {{ stats.attack_distribution | tojson }};
+  const labels = Object.keys(distData);
+  const data = Object.values(distData);
+
+  // Specific Attack Signatures
+  const ctx1 = document.getElementById('attackTypeChart');
+  if (ctx1) {
+    new Chart(ctx1, {
+      type: 'pie',
+      data: {
+        labels: labels.length ? labels : ['Benign Baseline'],
+        datasets: [{
+          data: data.length ? data : [1],
+          backgroundColor: ['#ff3366', '#ff9100', '#00d4ff', '#2979ff', '#9c27b0', '#ffea00', '#00e676'],
+          borderWidth: 2,
+          borderColor: '#181f45'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'right', labels: { color: '#8c9dc3', boxWidth: 12 } }
+        }
+      }
+    });
+  }
+
+  // Attack Category Breakdown
+  const ctx2 = document.getElementById('categoryChart');
+  if (ctx2) {
+    const catMap = {
+      'DDoS': 0, 'DoS': 0, 'Mirai Botnet': 0, 'Reconnaissance': 0, 'Brute Force': 0, 'Normal': 0
+    };
+
+    labels.forEach((l, idx) => {
+      const count = data[idx];
+      if (l.includes('DDoS')) catMap['DDoS'] += count;
+      else if (l.includes('DoS')) catMap['DoS'] += count;
+      else if (l.includes('Mirai')) catMap['Mirai Botnet'] += count;
+      else if (l.includes('Recon')) catMap['Reconnaissance'] += count;
+      else if (l.includes('Brute')) catMap['Brute Force'] += count;
+      else catMap['Normal'] += count;
+    });
+
+    new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(catMap),
+        datasets: [{
+          label: 'Total Flow Incidents',
+          data: Object.values(catMap),
+          backgroundColor: '#2979ff',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8c9dc3' } },
+          x: { grid: { display: false }, ticks: { color: '#8c9dc3' } }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

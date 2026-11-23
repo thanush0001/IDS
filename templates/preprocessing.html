@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Data Preprocessing{% endblock %}
+{% block page_title %}<i class="fas fa-filter"></i> Data Preprocessing Pipeline{% endblock %}
+
+{% block content %}
+<div class="grid-2">
+  <!-- Pipeline Steps Visualizer -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fas fa-diagram-project"></i> Preprocessing Architecture</h3>
+      <span style="font-size: 0.8rem; color: var(--text-secondary);">Leakage-Free Execution</span>
+    </div>
+
+    <div class="pipeline-steps">
+      <div class="pipeline-step">
+        <div class="step-num">1</div>
+        <div>
+          <strong>Missing Value & Infinity Imputation</strong>
+          <p style="font-size: 0.8rem; color: var(--text-secondary);">Replaces +/-inf, imputes medians for numeric flow metrics, drops corrupt samples.</p>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-num">2</div>
+        <div>
+          <strong>Duplicate Flow Removal</strong>
+          <p style="font-size: 0.8rem; color: var(--text-secondary);">Prunes duplicate network records to avoid model overfitting on identical streams.</p>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-num">3</div>
+        <div>
+          <strong>Target Label Encoding</strong>
+          <p style="font-size: 0.8rem; color: var(--text-secondary);">Encodes Benign and attack classes into discrete integers while retaining mapping.</p>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-num">4</div>
+        <div>
+          <strong>Feature Selection (ANOVA / Variance)</strong>
+          <p style="font-size: 0.8rem; color: var(--text-secondary);">Eliminates zero-variance constants; extracts top 25 salient features using SelectKBest.</p>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-num">5</div>
+        <div>
+          <strong>Stratified Split & Feature Scaling</strong>
+          <p style="font-size: 0.8rem; color: var(--text-secondary);">Fits StandardScaler and SMOTE strictly on training split to eliminate data leakage.</p>
+        </div>
+      </div>
+    </div>
+
+    <button id="runPreprocessBtn" class="btn btn-cyan" style="width: 100%; margin-top: 1.5rem;" onclick="runPreprocessing()">
+      <i class="fas fa-play"></i> Execute Preprocessing Pipeline
+    </button>
+  </div>
+
+  <!-- Preprocessing Status & Results -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fas fa-clipboard-check"></i> Pipeline Execution Summary</h3>
+      <span id="pipelineStatusBadge" class="badge {% if preprocessing_info %}badge-normal{% else %}badge-medium{% endif %}">
+        {% if preprocessing_info %}Completed{% else %}Pending Run{% endif %}
+      </span>
+    </div>
+
+    <div id="preprocessResults">
+      {% if preprocessing_info %}
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+          <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+            <div style="color: var(--text-secondary); font-size: 0.75rem;">TARGET LABEL COLUMN</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-cyan);">{{ preprocessing_info.label_column }}</div>
+          </div>
+          <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+            <div style="color: var(--text-secondary); font-size: 0.75rem;">ATTACK CLASSES DETECTED</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-orange);">{{ preprocessing_info.num_classes }} Classes</div>
+          </div>
+          <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+            <div style="color: var(--text-secondary); font-size: 0.75rem;">MISSING IMPUTED</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">{{ preprocessing_info.missing_values }}</div>
+          </div>
+          <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+            <div style="color: var(--text-secondary); font-size: 0.75rem;">DUPLICATES REMOVED</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">{{ preprocessing_info.duplicates_removed }}</div>
+          </div>
+        </div>
+
+        <h4 style="margin-bottom: 0.5rem; font-size: 0.95rem;">Retained Feature Space:</h4>
+        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; max-height: 180px; overflow-y: auto;">
+          <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+            {% if preprocessing_info.features_selected %}
+              {% for f in preprocessing_info.features_selected %}
+                <span class="badge badge-low" style="font-size: 0.75rem; text-transform: none;">{{ f }}</span>
+              {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+          <a href="{{ url_for('training') }}" class="btn btn-cyan btn-sm">
+            <i class="fas fa-brain"></i> Proceed to Model Training
+          </a>
+        </div>
+      {% else %}
+        <div style="text-align: center; padding: 3rem 1rem; color: var(--text-secondary);">
+          <i class="fas fa-cogs" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+          <p>Click "Execute Preprocessing Pipeline" to clean and prepare dataset for training.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function runPreprocessing() {
+  const btn = document.getElementById('runPreprocessBtn');
+  const badge = document.getElementById('pipelineStatusBadge');
+  const container = document.getElementById('preprocessResults');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Executing Preprocessing Pipeline...';
+  badge.className = 'badge badge-medium';
+  badge.textContent = 'Processing';
+
+  const res = await apiCall('/api/preprocessing/run', 'POST');
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-play"></i> Re-execute Preprocessing';
+
+  if (res.success) {
+    badge.className = 'badge badge-normal';
+    badge.textContent = 'Completed';
+    showToast('Preprocessing completed successfully! Artifacts saved.', 'success');
+
+    const s = res.summary;
+    let featBadges = '';
+    s.selected_features.forEach(f => {
+      featBadges += `<span class="badge badge-low" style="font-size: 0.75rem; text-transform: none;">${f}</span> `;
+    });
+
+    container.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+          <div style="color: var(--text-secondary); font-size: 0.75rem;">TARGET LABEL COLUMN</div>
+          <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-cyan);">${s.label_column}</div>
+        </div>
+        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+          <div style="color: var(--text-secondary); font-size: 0.75rem;">ATTACK CLASSES DETECTED</div>
+          <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-orange);">${s.num_classes} Classes</div>
+        </div>
+        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+          <div style="color: var(--text-secondary); font-size: 0.75rem;">TRAIN / TEST SPLIT</div>
+          <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">${s.train_size} / ${s.test_size}</div>
+        </div>
+        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+          <div style="color: var(--text-secondary); font-size: 0.75rem;">DUPLICATES PRUNED</div>
+          <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">${s.duplicates_removed}</div>
+        </div>
+      </div>
+      <h4 style="margin-bottom: 0.5rem; font-size: 0.95rem;">Extracted Features (${s.features_count}):</h4>
+      <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; max-height: 180px; overflow-y: auto;">
+        <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">${featBadges}</div>
+      </div>
+      <div style="margin-top: 1.5rem;">
+        <a href="{{ url_for('training') }}" class="btn btn-cyan btn-sm"><i class="fas fa-brain"></i> Proceed to Model Training</a>
+      </div>
+    `;
+  } else {
+    badge.className = 'badge badge-high';
+    badge.textContent = 'Failed';
+    showToast(res.message || 'Error occurred during preprocessing.', 'danger');
+  }
+}
+</script>
+{% endblock %}

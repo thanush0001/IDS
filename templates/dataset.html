@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Dataset Manager{% endblock %}
+{% block page_title %}<i class="fas fa-database"></i> IoT Telemetry Dataset Manager{% endblock %}
+
+{% block content %}
+<div class="grid-2">
+  <!-- Upload Zone -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fas fa-cloud-arrow-up"></i> Ingest Telemetry Dataset</h3>
+      <span style="font-size: 0.8rem; color: var(--text-secondary);">CSV (Max 500MB)</span>
+    </div>
+
+    <form method="POST" action="{{ url_for('dataset_upload') }}" enctype="multipart/form-data" id="uploadForm">
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+        <i class="fas fa-file-csv"></i>
+        <h4 style="margin-bottom: 0.5rem;">Click or Drag & Drop Network CSV</h4>
+        <p style="color: var(--text-secondary); font-size: 0.85rem;">Supports CICIoT2023, BoT-IoT, UNSW-NB15 schema</p>
+        <input type="file" name="file" id="fileInput" accept=".csv" style="display: none;" onchange="handleFileSelect(this)">
+        <div id="fileSelectedName" style="margin-top: 1rem; color: var(--accent-cyan); font-weight: 600;"></div>
+      </div>
+
+      <button type="submit" class="btn btn-cyan" style="width: 100%; margin-top: 1.25rem;">
+        <i class="fas fa-upload"></i> Upload & Register Dataset
+      </button>
+    </form>
+  </div>
+
+  <!-- Current Dataset Metadata -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fas fa-circle-info"></i> Ingested Dataset Profile</h3>
+      {% if dataset_info %}
+        <span class="badge badge-normal">Active</span>
+      {% else %}
+        <span class="badge badge-medium">None</span>
+      {% endif %}
+    </div>
+
+    {% if dataset_info %}
+      <div style="margin-bottom: 1.25rem;">
+        <h3 style="color: var(--accent-cyan); word-break: break-all;">{{ dataset_info.filename }}</h3>
+        <p style="color: var(--text-secondary); font-size: 0.85rem;">Registered at {{ dataset_info.uploaded_at }}</p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; text-align: center; background: var(--bg-secondary); padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+        <div>
+          <div class="stat-value" style="font-size: 1.5rem; color: var(--text-primary);">{{ dataset_info.num_rows }}</div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary);">ROWS</div>
+        </div>
+        <div>
+          <div class="stat-value" style="font-size: 1.5rem; color: var(--text-primary);">{{ dataset_info.num_cols }}</div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary);">COLUMNS</div>
+        </div>
+        <div>
+          <div class="stat-value" style="font-size: 1.5rem; color: var(--text-primary);">{{ dataset_info.file_size }} MB</div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary);">SIZE</div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem;">
+        <a href="{{ url_for('preprocessing') }}" class="btn btn-cyan btn-sm">
+          <i class="fas fa-arrow-right"></i> Proceed to Preprocessing
+        </a>
+      </div>
+    {% else %}
+      <div style="text-align: center; padding: 2.5rem; color: var(--text-secondary);">
+        <i class="fas fa-folder-open" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+        <p>No dataset currently loaded. Use sample generation or upload a CSV above.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Dataset Live Preview Table -->
+<div class="card" style="margin-top: 1.5rem;">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-table"></i> Telemetry Head Preview (First 20 Records)</h3>
+    <button class="btn btn-outline btn-sm" onclick="loadPreview()"><i class="fas fa-rotate"></i> Refresh</button>
+  </div>
+  <div class="table-responsive" id="previewContainer">
+    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+      Loading records preview...
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function handleFileSelect(input) {
+  if (input.files && input.files[0]) {
+    document.getElementById('fileSelectedName').textContent = `Selected: ${input.files[0].name} (${(input.files[0].size / 1024 / 1024).toFixed(2)} MB)`;
+  }
+}
+
+async function loadPreview() {
+  const container = document.getElementById('previewContainer');
+  const res = await apiCall('/api/dataset/preview');
+  if (res.success && res.records && res.records.length > 0) {
+    let html = '<table class="cyber-table"><thead><tr>';
+    res.columns.forEach(col => {
+      html += `<th>${col}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+    res.records.forEach(row => {
+      html += '<tr>';
+      res.columns.forEach(col => {
+        html += `<td class="font-mono" style="font-size: 0.8rem;">${row[col]}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } else {
+    container.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--text-secondary);">${res.message || 'No dataset loaded to preview.'}</div>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadPreview);
+</script>
+{% endblock %}

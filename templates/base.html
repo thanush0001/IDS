@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}IoT Intrusion Detection System{% endblock %} | IoT-IDS</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Chart.js & Plotly.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.29.1.min.js"></script>
+  
+  <!-- Custom Cyber Theme CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <div class="app-wrapper">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a href="{{ url_for('dashboard') }}" class="sidebar-brand">
+          <i class="fas fa-shield-virus"></i>
+          <span>IoT-IDS</span>
+        </a>
+      </div>
+
+      <ul class="sidebar-nav">
+        <li class="sidebar-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+          <a href="{{ url_for('dashboard') }}" class="sidebar-link">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>Dashboard</span>
+          </a>
+        </li>
+        <li class="sidebar-item {% if request.endpoint == 'dataset' %}active{% endif %}">
+          <a href="{{ url_for('dataset') }}" class="sidebar-link">
+            <i class="fas fa-database"></i>
+            <span>Dataset Manager</span>
+          </a>
+        </li>
+        <li class="sidebar-item {% if request.endpoint == 'preprocessing' %}active{% endif %}">
+          <a href="{{ url_for('preprocessing') }}" class="sidebar-link">
+            <i class="fas fa-filter"></i>
+            <span>Preprocessing</span>
+          </a>
+        </li>
+        <li class="sidebar-item {% if request.endpoint == 'training' %}active{% endif %}">
+          <a href="{{ url_for('training') }}" class="sidebar-link">
+            <i class="fas fa-brain"></i>
+            <span>Model Training</span>
+          </a>
+        </li>
+        <li class="sidebar-item {% if request.endpoint == 'model_comparison' %}active{% endif %}">
+          <a href="{{ url_for('model_comparison') }}" class="sidebar-link">
+            <i class="fas fa-chart-column"></i>
+            <span>Model Comparison</span>
+          </a>
+        </li>
+        <li class="sidebar-item {% if request.endpoint == 'detection' %}active{% endif %}">
+          <a href="{{ url_for('detection') }}" class="sidebar-link">
+            <i class="fas fa-radar"></i>
+            <span>Intrusion Detection</span>
+          </a>
+        </li>
+        <li class="sidebar-item {% if request.endpoint == 'attack_analysis' %}active{% endif %}">
+          <a href="{{ url_for('attack_analysis') }}" class="sidebar-link">
+            <i class="fas fa-crosshairs"></i>
+            <span>Attack Analysis</span>
+          </a>
+        </li>
+        <li class="sidebar-item {% if request.endpoint == 'alerts_page' %}active{% endif %}">
+          <a href="{{ url_for('alerts_page') }}" class="sidebar-link">
+            <i class="fas fa-bell"></i>
+            <span>Security Alerts</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="user-badge">
+          <div class="user-avatar">
+            <i class="fas fa-user-shield"></i>
+          </div>
+          <span class="user-name">{{ session.get('username', 'Admin') }}</span>
+        </div>
+        <a href="{{ url_for('logout') }}" title="Logout" style="color: var(--text-secondary);">
+          <i class="fas fa-sign-out-alt"></i>
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <div class="main-content">
+      <header class="top-navbar">
+        <h1 class="page-title">
+          {% block page_title %}<i class="fas fa-network-wired"></i> IoT Intrusion Detection System{% endblock %}
+        </h1>
+        <div class="nav-actions">
+          <a href="{{ url_for('alerts_page') }}" class="btn btn-outline btn-sm">
+            <i class="fas fa-bell"></i> Alerts
+          </a>
+          <a href="{{ url_for('detection') }}" class="btn btn-cyan btn-sm">
+            <i class="fas fa-play"></i> Analyze Traffic
+          </a>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <!-- Flash Alert Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-container">
+              {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                  <i class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'danger' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>
+                  <span>{{ message }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

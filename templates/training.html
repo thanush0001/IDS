@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}ML Model Training{% endblock %}
+{% block page_title %}<i class="fas fa-brain"></i> Machine Learning Classifier Training{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom: 2rem;">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-layer-group"></i> Multi-Algorithm IoT Training Suite</h3>
+    <button id="trainBtn" class="btn btn-cyan" onclick="trainModels()">
+      <i class="fas fa-bolt"></i> Train All 5 Algorithms
+    </button>
+  </div>
+  <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
+    Trains and compares Random Forest, Decision Tree, Support Vector Machine (RBF), K-Nearest Neighbors, and XGBoost.
+    Calculates Accuracy, Precision, Recall, F1-Score, ROC-AUC, and execution latency.
+  </p>
+
+  <div class="stats-grid" style="margin-bottom: 0;">
+    <div style="background: var(--bg-secondary); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color);">
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+        <i class="fas fa-tree" style="color: var(--accent-green); font-size: 1.25rem;"></i>
+        <strong>Random Forest</strong>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-secondary);">Ensemble of 100 deep decision trees with feature bagging.</p>
+    </div>
+
+    <div style="background: var(--bg-secondary); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color);">
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+        <i class="fas fa-sitemap" style="color: var(--accent-cyan); font-size: 1.25rem;"></i>
+        <strong>Decision Tree</strong>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-secondary);">Interpretable non-linear split boundaries for low-latency scoring.</p>
+    </div>
+
+    <div style="background: var(--bg-secondary); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color);">
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+        <i class="fas fa-vector-square" style="color: var(--accent-purple); font-size: 1.25rem;"></i>
+        <strong>Support Vector Machine</strong>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-secondary);">RBF kernel maximum margin hyperplane separating malicious flows.</p>
+    </div>
+
+    <div style="background: var(--bg-secondary); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color);">
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+        <i class="fas fa-circle-nodes" style="color: var(--accent-orange); font-size: 1.25rem;"></i>
+        <strong>K-Nearest Neighbors</strong>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-secondary);">Instance-based distance voting in scaled telemetry feature space.</p>
+    </div>
+
+    <div style="background: var(--bg-secondary); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color);">
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+        <i class="fas fa-rocket" style="color: var(--accent-red); font-size: 1.25rem;"></i>
+        <strong>XGBoost Classifier</strong>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-secondary);">High-performance gradient boosting optimized for tabular network data.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Results Table -->
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-table-list"></i> Algorithm Performance Leaderboard</h3>
+    <a href="{{ url_for('model_comparison') }}" class="btn btn-outline btn-sm"><i class="fas fa-chart-bar"></i> View Visual Comparison</a>
+  </div>
+
+  <div class="table-responsive" id="modelsTableContainer">
+    {% if models %}
+      <table class="cyber-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Algorithm</th>
+            <th>Accuracy</th>
+            <th>Precision</th>
+            <th>Recall</th>
+            <th>F1-Score</th>
+            <th>ROC-AUC</th>
+            <th>Training Time</th>
+            <th>Inference Latency</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in models %}
+            <tr>
+              <td>
+                {% if m.is_best %}
+                  <span class="badge badge-best"><i class="fas fa-crown"></i> Best</span>
+                {% else %}
+                  <span class="badge badge-normal"><i class="fas fa-check"></i> Trained</span>
+                {% endif %}
+              </td>
+              <td style="font-weight: 600;">{{ m.model_name }}</td>
+              <td class="font-mono">{{ (m.accuracy * 100)|round(2) }}%</td>
+              <td class="font-mono">{{ (m.precision_score * 100)|round(2) }}%</td>
+              <td class="font-mono">{{ (m.recall_score * 100)|round(2) }}%</td>
+              <td class="font-mono" style="font-weight: 700; color: var(--accent-cyan);">{{ (m.f1_score * 100)|round(2) }}%</td>
+              <td class="font-mono">{{ (m.roc_auc * 100)|round(2) }}%</td>
+              <td class="font-mono">{{ m.training_time|round(3) }}s</td>
+              <td class="font-mono">{{ (m.prediction_time * 1000)|round(1) }}ms</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+        <i class="fas fa-brain" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+        <p>No models trained yet. Click "Train All 5 Algorithms" to initiate benchmark training.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function trainModels() {
+  const btn = document.getElementById('trainBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Training 5 ML Algorithms (RF, DT, SVM, KNN, XGB)...';
+
+  showToast('Initiating model training pipeline. This takes 10-25 seconds...', 'info');
+
+  const res = await apiCall('/api/training/run', 'POST');
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-bolt"></i> Re-train Algorithms';
+
+  if (res.success) {
+    showToast(`Training complete! Best selected model: ${res.best_model}`, 'success');
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  } else {
+    showToast(res.message || 'Error occurred during model training.', 'danger');
+  }
+}
+</script>
+{% endblock %}

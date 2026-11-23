@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Alert History{% endblock %}
+{% block page_title %}<i class="fas fa-bell"></i> Intrusion Alert Audit Trail{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-list-check"></i> Real-Time Security Incident Logs</h3>
+    <span class="badge badge-low">{{ alerts|length }} Total Incidents</span>
+  </div>
+
+  {% if alerts %}
+    <div class="table-responsive">
+      <table class="cyber-table">
+        <thead>
+          <tr>
+            <th>Alert ID</th>
+            <th>Detection Timestamp</th>
+            <th>Target Signature</th>
+            <th>Confidence</th>
+            <th>Sensor IP</th>
+            <th>Severity</th>
+            <th>Review Status</th>
+            <th>Acknowledge</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in alerts %}
+            <tr id="alert-row-{{ a.id }}">
+              <td class="font-mono">#{{ a.id }}</td>
+              <td class="font-mono" style="font-size: 0.8rem;">{{ a.created_at }}</td>
+              <td style="font-weight: 600; color: var(--accent-red);">{{ a.attack_type }}</td>
+              <td class="font-mono">{{ a.confidence }}%</td>
+              <td class="font-mono">{{ a.source_ip }}</td>
+              <td><span class="badge badge-{{ a.severity }}">{{ a.severity }}</span></td>
+              <td>
+                <span class="status-badge badge {% if a.reviewed %}badge-normal{% else %}badge-high{% endif %}">
+                  {% if a.reviewed %}Acknowledged{% else %}Pending{% endif %}
+                </span>
+              </td>
+              <td>
+                {% if not a.reviewed %}
+                  <button class="btn btn-outline btn-sm" onclick="acknowledgeAlert({{ a.id }}, this)">
+                    <i class="fas fa-check"></i> Review
+                  </button>
+                {% else %}
+                  <span style="color: var(--text-muted); font-size: 0.8rem;"><i class="fas fa-circle-check"></i> Verified</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+      <i class="fas fa-shield-cat" style="font-size: 3rem; color: var(--accent-green); margin-bottom: 1rem;"></i>
+      <p>Zero active security alerts. The IoT network is currently operating under normal baseline.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

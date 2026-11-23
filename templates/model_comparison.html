@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Model Comparison{% endblock %}
+{% block page_title %}<i class="fas fa-chart-column"></i> Multi-Algorithm Performance Analytics{% endblock %}
+
+{% block content %}
+<!-- Best Model Highlight Banner -->
+{% if best_model %}
+  <div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(90deg, rgba(0, 212, 255, 0.08), rgba(41, 121, 255, 0.05)); border-color: var(--accent-cyan);">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 50px; height: 50px; border-radius: 12px; background: rgba(0, 212, 255, 0.15); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--accent-cyan);">
+          <i class="fas fa-trophy"></i>
+        </div>
+        <div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase;">Top Performing Algorithm</div>
+          <h2 style="font-size: 1.4rem; color: var(--text-primary);">{{ best_model.model_name }}</h2>
+        </div>
+      </div>
+      <div style="display: flex; gap: 2rem;">
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary);">ACCURACY</div>
+          <div style="font-size: 1.3rem; font-weight: 700; color: var(--accent-green);">{{ (best_model.accuracy * 100)|round(2) }}%</div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary);">F1 SCORE</div>
+          <div style="font-size: 1.3rem; font-weight: 700; color: var(--accent-cyan);">{{ (best_model.f1_score * 100)|round(2) }}%</div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary);">TRAINING TIME</div>
+          <div style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary);">{{ best_model.training_time|round(2) }}s</div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<!-- Visual Comparison Charts -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fas fa-bullseye"></i> Accuracy & F1-Score Comparison</h3>
+    </div>
+    <div style="position: relative; height: 280px;">
+      <canvas id="accuracyF1Chart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fas fa-clock"></i> Computational Efficiency (Training Time)</h3>
+    </div>
+    <div style="position: relative; height: 280px;">
+      <canvas id="timeEfficiencyChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Comprehensive Metrics Breakdown Table -->
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-table-cells"></i> Standardized Evaluation Benchmark</h3>
+  </div>
+
+  <div class="table-responsive">
+    <table class="cyber-table">
+      <thead>
+        <tr>
+          <th>Algorithm</th>
+          <th>Accuracy</th>
+          <th>Precision (Weighted)</th>
+          <th>Recall (Weighted)</th>
+          <th>F1-Score (Weighted)</th>
+          <th>ROC-AUC</th>
+          <th>Training Time (s)</th>
+          <th>Prediction Latency</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in models %}
+          <tr {% if m.is_best %}style="background: rgba(0, 212, 255, 0.05);"{% endif %}>
+            <td>
+              <strong>{{ m.model_name }}</strong>
+              {% if m.is_best %}<span class="badge badge-best" style="margin-left: 0.5rem;">Best</span>{% endif %}
+            </td>
+            <td class="font-mono">{{ (m.accuracy * 100)|round(2) }}%</td>
+            <td class="font-mono">{{ (m.precision_score * 100)|round(2) }}%</td>
+            <td class="font-mono">{{ (m.recall_score * 100)|round(2) }}%</td>
+            <td class="font-mono" style="font-weight: 700; color: var(--accent-cyan);">{{ (m.f1_score * 100)|round(2) }}%</td>
+            <td class="font-mono">{{ (m.roc_auc * 100)|round(2) }}%</td>
+            <td class="font-mono">{{ m.training_time|round(3) }}s</td>
+            <td class="font-mono">{{ (m.prediction_time * 1000)|round(1) }}ms</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const models = {{ models | tojson }};
+  if (!models || models.length === 0) return;
+
+  const names = models.map(m => m.model_name);
+  const accuracies = models.map(m => (m.accuracy * 100).toFixed(2));
+  const f1Scores = models.map(m => (m.f1_score * 100).toFixed(2));
+  const trainTimes = models.map(m => m.training_time.toFixed(3));
+
+  // Chart 1: Accuracy & F1
+  const ctx1 = document.getElementById('accuracyF1Chart');
+  if (ctx1) {
+    new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels: names,
+        datasets: [
+          {
+            label: 'Accuracy (%)',
+            data: accuracies,
+            backgroundColor: '#00e676',
+            borderRadius: 6
+          },
+          {
+            label: 'F1-Score (%)',
+            data: f1Scores,
+            backgroundColor: '#00d4ff',
+            borderRadius: 6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8c9dc3' } },
+          x: { grid: { display: false }, ticks: { color: '#8c9dc3' } }
+        },
+        plugins: {
+          legend: { labels: { color: '#8c9dc3' } }
+        }
+      }
+    });
+  }
+
+  // Chart 2: Training Time
+  const ctx2 = document.getElementById('timeEfficiencyChart');
+  if (ctx2) {
+    new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: names,
+        datasets: [{
+          label: 'Training Time (seconds)',
+          data: trainTimes,
+          backgroundColor: '#ff9100',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8c9dc3' } },
+          x: { grid: { display: false }, ticks: { color: '#8c9dc3' } }
+        },
+        plugins: {
+          legend: { labels: { color: '#8c9dc3' } }
+        }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

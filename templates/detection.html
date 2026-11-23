@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Intrusion Detection{% endblock %}
+{% block page_title %}<i class="fas fa-radar"></i> Real-Time IoT Intrusion Detection{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom: 2rem;">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-magnifying-glass-chart"></i> Stream / Batch Network Telemetry Scanner</h3>
+    {% if best_model %}
+      <span class="badge badge-normal">Engine: {{ best_model.model_name }}</span>
+    {% else %}
+      <span class="badge badge-medium">Model Required</span>
+    {% endif %}
+  </div>
+
+  <form id="detectForm" enctype="multipart/form-data">
+    <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center;">
+      <div class="dropzone" id="detectDropzone" onclick="document.getElementById('detectFileInput').click()" style="padding: 1.5rem;">
+        <i class="fas fa-file-waveform" style="font-size: 2rem;"></i>
+        <h4 id="detectFileName">Choose or Drag Network Traffic CSV</h4>
+        <input type="file" id="detectFileInput" name="file" accept=".csv" style="display: none;" onchange="handleDetectFile(this)">
+      </div>
+      <button type="button" class="btn btn-cyan" id="analyzeBtn" onclick="runDetection()" style="height: 100%; min-height: 100px; padding: 0 2rem;">
+        <i class="fas fa-play"></i> Analyze & Classify
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Detection Results Area (Populated after inference) -->
+<div id="detectionResultsContainer" style="display: none;">
+  <!-- Summary Cards -->
+  <div class="stats-grid">
+    <div class="card stat-card">
+      <div class="stat-icon cyan"><i class="fas fa-list-ol"></i></div>
+      <div>
+        <div class="stat-value" id="resTotal">0</div>
+        <div class="stat-label">Flows Analyzed</div>
+      </div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-icon green"><i class="fas fa-check-double"></i></div>
+      <div>
+        <div class="stat-value" id="resNormal">0</div>
+        <div class="stat-label">Normal Traffic</div>
+      </div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-icon red"><i class="fas fa-skull-crossbones"></i></div>
+      <div>
+        <div class="stat-value" id="resMalicious">0</div>
+        <div class="stat-label">Malicious Flows</div>
+      </div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-icon orange"><i class="fas fa-triangle-exclamation"></i></div>
+      <div>
+        <div class="stat-value" id="resRate">0%</div>
+        <div class="stat-label">Intrusion Ratio</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Bar -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <div id="alertNotice" class="badge badge-high" style="display: none; font-size: 0.9rem; padding: 0.5rem 1rem;">
+      <i class="fas fa-bell"></i> Critical Intrusions Detected! Alerts logged.
+    </div>
+    <a id="downloadReportBtn" href="#" class="btn btn-outline btn-sm">
+      <i class="fas fa-download"></i> Download Audit Report (.CSV)
+    </a>
+  </div>
+
+  <!-- Classification Table -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fas fa-fingerprint"></i> Per-Record Detection & Confidence Scores</h3>
+    </div>
+    <div class="table-responsive">
+      <table class="cyber-table" id="predictionsTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Predicted Signature</th>
+            <th>Threat Category</th>
+            <th>Confidence</th>
+            <th>Threat Level</th>
+          </tr>
+        </thead>
+        <tbody id="predictionsBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Detection Batch History -->
+<div class="card" style="margin-top: 2rem;">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-clock-rotate-left"></i> Historical Detection Scans</h3>
+  </div>
+  <div class="table-responsive">
+    <table class="cyber-table">
+      <thead>
+        <tr>
+          <th>Scan ID</th>
+          <th>Filename</th>
+          <th>Total Flows</th>
+          <th>Normal</th>
+          <th>Malicious</th>
+          <th>Detection Rate</th>
+          <th>Engine Model</th>
+          <th>Report</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if detection_history %}
+          {% for h in detection_history %}
+            <tr>
+              <td class="font-mono">#{{ h.id }}</td>
+              <td>{{ h.filename }}</td>
+              <td class="font-mono">{{ h.total_records }}</td>
+              <td class="font-mono" style="color: var(--accent-green);">{{ h.normal_count }}</td>
+              <td class="font-mono" style="color: var(--accent-red);">{{ h.malicious_count }}</td>
+              <td class="font-mono">{{ h.detection_rate }}%</td>
+              <td><span class="badge badge-low">{{ h.model_used }}</span></td>
+              <td>
+                <a href="{{ url_for('download_report', detection_id=h.id) }}" class="btn btn-outline btn-sm">
+                  <i class="fas fa-download"></i> CSV
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-secondary);">No past scans recorded.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedFile = null;
+
+function handleDetectFile(input) {
+  if (input.files && input.files[0]) {
+    selectedFile = input.files[0];
+    document.getElementById('detectFileName').textContent = `Loaded: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)`;
+  }
+}
+
+async function runDetection() {
+  if (!selectedFile) {
+    showToast('Please select a traffic CSV file first.', 'warning');
+    return;
+  }
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Classifying Traffic...';
+
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+
+  const res = await apiCall('/api/detection/predict', 'POST', formData);
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-play"></i> Analyze & Classify';
+
+  if (res.success && res.data) {
+    const data = res.data;
+    showToast(`Analysis complete: ${data.malicious_count} malicious flows detected.`, data.malicious_count > 0 ? 'danger' : 'success');
+
+    document.getElementById('detectionResultsContainer').style.display = 'block';
+    document.getElementById('resTotal').textContent = data.total_records;
+    document.getElementById('resNormal').textContent = data.normal_count;
+    document.getElementById('resMalicious').textContent = data.malicious_count;
+    document.getElementById('resRate').textContent = `${data.detection_rate}%`;
+
+    if (data.alerts_generated > 0) {
+      const notice = document.getElementById('alertNotice');
+      notice.style.display = 'inline-flex';
+      notice.innerHTML = `<i class="fas fa-bell"></i> ${data.alerts_generated} Critical Intrusion Alerts Generated!`;
+    }
+
+    // Set download link
+    const dlBtn = document.getElementById('downloadReportBtn');
+    dlBtn.href = `/api/reports/download/${data.detection_id}`;
+
+    // Populate table (first 50 records)
+    const tbody = document.getElementById('predictionsBody');
+    let rowsHtml = '';
+    data.records.slice(0, 50).forEach(r => {
+      rowsHtml += `
+        <tr>
+          <td class="font-mono">${r.record_id}</td>
+          <td style="font-weight: 600; color: ${r.is_malicious ? 'var(--accent-red)' : 'var(--accent-green)'};">${r.prediction}</td>
+          <td>${r.category}</td>
+          <td class="font-mono">${r.confidence}%</td>
+          <td><span class="badge badge-${r.severity}">${r.severity}</span></td>
+        </tr>
+      `;
+    });
+    tbody.innerHTML = rowsHtml;
+
+    // Scroll to results
+    document.getElementById('detectionResultsContainer').scrollIntoView({ behavior: 'smooth' });
+  } else {
+    showToast(res.message || 'Detection failed.', 'danger');
+  }
+}
+</script>
+{% endblock %}
