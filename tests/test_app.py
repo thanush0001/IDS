@@ -77,10 +77,14 @@ class TestDatabase:
         assert admin['username'] == 'admin'
 
     def test_create_and_verify_user(self):
-        uid = create_user("sec_analyst", "analyst@cyber.org", "Pass1234!")
+        import time
+        ts = int(time.time() * 1000)
+        uname = f"analyst_{ts}"
+        email = f"analyst_{ts}@cyber.org"
+        uid = create_user(uname, email, "Pass1234!")
         assert uid is not None
-        user = get_user_by_username("sec_analyst")
-        assert user['email'] == "analyst@cyber.org"
+        user = get_user_by_username(uname)
+        assert user['email'] == email
         assert verify_password(user['password_hash'], "Pass1234!") is True
         assert verify_password(user['password_hash'], "WrongPass") is False
 
@@ -109,7 +113,7 @@ class TestDatabase:
             normal=80,
             malicious=20,
             rate=20.0,
-            model_used="Random Forest"
+            model_name="Random Forest"
         )
         assert det_id > 0
 

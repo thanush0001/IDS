@@ -253,8 +253,9 @@ def get_best_model():
         conn.close()
 
 
-def save_detection_result(user_id, filename, total, normal, malicious, rate, model_name, report_path=None):
+def save_detection_result(user_id, filename, total, normal, malicious, rate, model_name=None, report_path=None, **kwargs):
     """Store batch intrusion detection summary."""
+    model_str = model_name or kwargs.get('model_used', 'Random Forest')
     conn = get_db()
     try:
         cursor = conn.cursor()
@@ -263,7 +264,7 @@ def save_detection_result(user_id, filename, total, normal, malicious, rate, mod
                 user_id, filename, total_records, normal_count,
                 malicious_count, detection_rate, model_used, report_path
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (user_id, filename, total, normal, malicious, rate, model_name, report_path))
+        """, (user_id, filename, total, normal, malicious, rate, model_str, report_path))
         conn.commit()
         return cursor.lastrowid
     finally:
